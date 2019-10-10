@@ -58,33 +58,12 @@ namespace StardewModdingAPI.Web.Framework.Caching
             this.Redis.StringSet(key, raw, expiry);
         }
 
-        /// <summary>Get all data models matching a key prefix.</summary>
-        /// <typeparam name="T">The model type.</typeparam>
-        /// <param name="prefix">The key prefix to match.</param>
-        public IEnumerable<T> GetAll<T>(string prefix)
-        {
-            RedisKey[] keys = this.GetKeys(prefix).ToArray();
-            foreach (RedisValue value in this.Redis.StringGet(keys))
-            {
-                if (value.HasValue)
-                    yield return JsonConvert.DeserializeObject<T>(value.ToString());
-            }
-        }
-
         /// <summary>Delete an entry from the cache.</summary>
         /// <param name="key">The key to delete.</param>
         public void Delete(string key)
         {
             key = this.GetCacheKey(key);
             this.Redis.KeyDelete(key);
-        }
-
-        /// <summary>Delete all entries matching a key prefix from the cache.</summary>
-        /// <param name="prefix">The prefix for keys to delete.</param>
-        public void DeleteAll(string prefix)
-        {
-            RedisKey[] keys = this.GetKeys(prefix).ToArray();
-            this.Redis.KeyDelete(keys);
         }
 
         /// <summary>Release all resources.</summary>

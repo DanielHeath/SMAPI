@@ -35,7 +35,7 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
         /// <summary>Get the cached wiki mods.</summary>
         public IEnumerable<CachedWikiMod> GetWikiMods()
         {
-            return this.Cache.GetAll<CachedWikiMod>(prefix: "wiki-mods.");
+            return this.Cache.Get<CachedWikiMod[]>("wiki-mods");
         }
 
         /// <summary>Save data fetched from the wiki compatibility list.</summary>
@@ -49,12 +49,8 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
             cachedMetadata = new CachedWikiMetadata(stableVersion, betaVersion);
             cachedMods = mods.Select(mod => new CachedWikiMod(mod)).ToArray();
 
-            this.Cache.Delete("wiki-metadata");
-            this.Cache.DeleteAll("wiki-mods.");
-
             this.Cache.Set("wiki-metadata", cachedMetadata);
-            for (int i = 0; i < cachedMods.Length; i++)
-                this.Cache.Set($"wiki-mods.{i}", cachedMods[i]);
+            this.Cache.Set("wiki-mods", cachedMods);
         }
     }
 }

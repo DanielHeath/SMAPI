@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 
 namespace StardewModdingAPI.Web.Framework.Caching
 {
@@ -21,17 +20,8 @@ namespace StardewModdingAPI.Web.Framework.Caching
         /// <param name="expiry">The amount of time the entry should be kept in the cache.</param>
         void Set<T>(string key, T value, TimeSpan? expiry = null);
 
-        /// <summary>Get all data models matching a key prefix.</summary>
-        /// <typeparam name="T">The model type.</typeparam>
-        /// <param name="prefix">The key prefix to match.</param>
-        IEnumerable<T> GetAll<T>(string prefix);
-
         /// <summary>Delete an entry from the cache.</summary>
         /// <param name="key">The key to delete.</param>
         void Delete(string key);
-
-        /// <summary>Delete all entries matching a key prefix from the cache.</summary>
-        /// <param name="prefix">The prefix for keys to delete.</param>
-        void DeleteAll(string prefix);
     }
 }
