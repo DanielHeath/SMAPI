@@ -1,7 +1,4 @@
 using System;
-using System.Diagnostics.CodeAnalysis;
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
 using StardewModdingAPI.Toolkit.Framework.UpdateData;
 using StardewModdingAPI.Web.Framework.ModRepositories;
 
@@ -16,11 +13,6 @@ namespace StardewModdingAPI.Web.Framework.Caching.Mods
         /****
         ** Tracking
         ****/
-        /// <summary>The internal MongoDB ID.</summary>
-        [SuppressMessage("ReSharper", "InconsistentNaming", Justification = "Named per MongoDB conventions.")]
-        [BsonIgnoreIfDefault]
-        public ObjectId _id { get; set; }
-
         /// <summary>When the data was last updated.</summary>
         public DateTimeOffset LastUpdated { get; set; }
 

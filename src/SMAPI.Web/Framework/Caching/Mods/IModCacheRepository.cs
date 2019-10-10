@@ -1,4 +1,3 @@
-using System;
 using StardewModdingAPI.Toolkit.Framework.UpdateData;
 using StardewModdingAPI.Web.Framework.ModRepositories;
 
@@ -23,9 +22,5 @@ namespace StardewModdingAPI.Web.Framework.Caching.Mods
         /// <param name="mod">The mod data.</param>
         /// <param name="cachedMod">The stored mod record.</param>
         void SaveMod(ModRepositoryKey site, string id, ModInfoModel mod, out CachedMod cachedMod);
-
-        /// <summary>Delete data for mods which haven't been requested within a given time limit.</summary>
-        /// <param name="age">The minimum age for which to remove mods.</param>
-        void RemoveStaleMods(TimeSpan age);
     }
 }

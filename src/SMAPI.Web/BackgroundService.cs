@@ -50,11 +50,9 @@ namespace StardewModdingAPI.Web
 
             // set startup tasks
             BackgroundJob.Enqueue(() => BackgroundService.UpdateWikiAsync());
-            BackgroundJob.Enqueue(() => BackgroundService.RemoveStaleModsAsync());
 
             // set recurring tasks
             RecurringJob.AddOrUpdate(() => BackgroundService.UpdateWikiAsync(), "*/10 * * * *"); // every 10 minutes
-            RecurringJob.AddOrUpdate(() => BackgroundService.RemoveStaleModsAsync(), "0 * * * *"); // hourly
 
             return Task.CompletedTask;
         }
@@ -82,13 +80,6 @@ namespace StardewModdingAPI.Web
         {
             WikiModList wikiCompatList = await new ModToolkit().GetWikiCompatibilityListAsync();
             BackgroundService.WikiCache.SaveWikiData(wikiCompatList.StableVersion, wikiCompatList.BetaVersion, wikiCompatList.Mods, out _, out _);
-        }
-
-        /// <summary>Remove mods which haven't been requested in over 48 hours.</summary>
-        public static Task RemoveStaleModsAsync()
-        {
-            BackgroundService.ModCache.RemoveStaleMods(TimeSpan.FromHours(48));
-            return Task.CompletedTask;
         }
 
 

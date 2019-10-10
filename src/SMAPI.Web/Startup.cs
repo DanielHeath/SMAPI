@@ -1,14 +1,13 @@
+using System;
 using System.Collections.Generic;
 using Hangfire;
-using Hangfire.Mongo;
+using Hangfire.Redis;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Rewrite;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MongoDB.Bson.Serialization;
-using MongoDB.Driver;
 using Newtonsoft.Json;
 using StardewModdingAPI.Toolkit.Serialization;
 using StardewModdingAPI.Web.Framework;
@@ -60,7 +59,7 @@ namespace StardewModdingAPI.Web
                 .Configure<BackgroundServicesConfig>(this.Configuration.GetSection("BackgroundServices"))
                 .Configure<ModCompatibilityListConfig>(this.Configuration.GetSection("ModCompatibilityList"))
                 .Configure<ModUpdateCheckConfig>(this.Configuration.GetSection("ModUpdateCheck"))
-                .Configure<MongoDbConfig>(this.Configuration.GetSection("MongoDB"))
+                .Configure<RedisConfig>(this.Configuration.GetSection("Redis"))
                 .Configure<SiteConfig>(this.Configuration.GetSection("Site"))
                 .Configure<RouteOptions>(options => options.ConstraintMap.Add("semanticVersion", typeof(VersionConstraint)))
                 .AddLogging()
@@ -75,7 +74,7 @@ namespace StardewModdingAPI.Web
                     options.SerializerSettings.Formatting = Formatting.Indented;
                     options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
                 });
-            MongoDbConfig mongoConfig = this.Configuration.GetSection("MongoDB").Get<MongoDbConfig>();
+            RedisConfig redisConfig = this.Configuration.GetSection("Redis").Get<RedisConfig>();
 
             // init background service
             {
@@ -84,14 +83,10 @@ namespace StardewModdingAPI.Web
                     services.AddHostedService<BackgroundService>();
             }
 
-            // init MongoDB
-            services.AddSingleton<IMongoDatabase>(serv =>
-            {
-                BsonSerializer.RegisterSerializer(new UtcDateTimeOffsetSerializer());
-                return new MongoClient(mongoConfig.GetConnectionString()).GetDatabase(mongoConfig.Database);
-            });
-            services.AddSingleton<IModCacheRepository>(serv => new ModCacheRepository(serv.GetRequiredService<IMongoDatabase>()));
-            services.AddSingleton<IWikiCacheRepository>(serv => new WikiCacheRepository(serv.GetRequiredService<IMongoDatabase>()));
+            // init cache
+            services.AddSingleton<ICache>(serv => new RedisCache(redisConfig.ConnectionString, redisConfig.KeyPrefix));
+            services.AddSingleton<IModCacheRepository>(serv => new ModCacheRepository(serv.GetRequiredService<ICache>(), maxCacheTime: TimeSpan.FromHours(48)));
+            services.AddSingleton<IWikiCacheRepository>(serv => new WikiCacheRepository(serv.GetRequiredService<ICache>()));
 
             // init Hangfire
             services
@@ -101,10 +96,9 @@ namespace StardewModdingAPI.Web
                         .SetDataCompatibilityLevel(CompatibilityLevel.Version_170)
                         .UseSimpleAssemblyNameTypeSerializer()
                         .UseRecommendedSerializerSettings()
-                        .UseMongoStorage(mongoConfig.GetConnectionString(), $"{mongoConfig.Database}-hangfire", new MongoStorageOptions
+                        .UseRedisStorage(redisConfig.ConnectionString, new RedisStorageOptions
                         {
-                            MigrationOptions = new MongoMigrationOptions(MongoMigrationStrategy.Drop),
-                            CheckConnection = false // error on startup takes down entire process
+                            Prefix = !string.IsNullOrWhiteSpace(redisConfig.KeyPrefix) ? $"{redisConfig.KeyPrefix}hangfire:" : "hangfire:"
                         });
                 });
 
@@ -178,7 +172,8 @@ namespace StardewModdingAPI.Web
             app.UseHangfireDashboard("/tasks", new DashboardOptions
             {
                 IsReadOnlyFunc = context => !JobDashboardAuthorizationFilter.IsLocalRequest(context),
-                Authorization = new[] { new JobDashboardAuthorizationFilter() }
+                Authorization = new[] { new JobDashboardAuthorizationFilter() },
+                DisplayStorageConnectionString = false
             });
         }
 

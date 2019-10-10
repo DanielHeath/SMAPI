@@ -1,5 +1,4 @@
 using System;
-using MongoDB.Driver;
 using StardewModdingAPI.Toolkit.Framework.UpdateData;
 using StardewModdingAPI.Web.Framework.ModRepositories;
 
@@ -11,27 +10,25 @@ namespace StardewModdingAPI.Web.Framework.Caching.Mods
         /*********
         ** Fields
         *********/
-        /// <summary>The collection for cached mod data.</summary>
-        private readonly IMongoCollection<CachedMod> Mods;
+        /// <summary>The cache in which to store data.</summary>
+        private readonly ICache Cache;
+
+        /// <summary>The maximum time to cache mods.</summary>
+        private readonly TimeSpan MaxCacheTime;
 
 
         /*********
         ** Public methods
         *********/
         /// <summary>Construct an instance.</summary>
-        /// <param name="database">The authenticated MongoDB database.</param>
-        public ModCacheRepository(IMongoDatabase database)
+        /// <param name="cache">The cache in which to store data.</param>
+        /// <param name="maxCacheTime">The maximum time to cache mods.</param>
+        public ModCacheRepository(ICache cache, TimeSpan maxCacheTime)
         {
-            // get collections
-            this.Mods = database.GetCollection<CachedMod>("mods");
-
-            // add indexes if needed
-            this.Mods.Indexes.CreateOne(new CreateIndexModel<CachedMod>(Builders<CachedMod>.IndexKeys.Ascending(p => p.ID).Ascending(p => p.Site)));
+            this.Cache = cache;
+            this.MaxCacheTime = maxCacheTime;
         }
 
-        /*********
-        ** Public methods
-        *********/
         /// <summary>Get the cached mod data.</summary>
         /// <param name="site">The mod site to search.</param>
         /// <param name="id">The mod's unique ID within the <paramref name="site"/>.</param>
@@ -40,8 +37,8 @@ namespace StardewModdingAPI.Web.Framework.Caching.Mods
         public bool TryGetMod(ModRepositoryKey site, string id, out CachedMod mod, bool markRequested = true)
         {
             // get mod
-            id = this.NormalizeId(id);
-            mod = this.Mods.Find(entry => entry.ID == id && entry.Site == site).FirstOrDefault();
+            string cacheKey = this.GetCacheKey(site, id);
+            mod = this.Cache.Get<CachedMod>(cacheKey);
             if (mod == null)
                 return false;
 
@@ -63,16 +60,7 @@ namespace StardewModdingAPI.Web.Framework.Caching.Mods
         public void SaveMod(ModRepositoryKey site, string id, ModInfoModel mod, out CachedMod cachedMod)
         {
             id = this.NormalizeId(id);
-
             cachedMod = this.SaveMod(new CachedMod(site, id, mod));
-        }
-
-        /// <summary>Delete data for mods which haven't been requested within a given time limit.</summary>
-        /// <param name="age">The minimum age for which to remove mods.</param>
-        public void RemoveStaleMods(TimeSpan age)
-        {
-            DateTimeOffset minDate = DateTimeOffset.UtcNow.Subtract(age);
-            var result = this.Mods.DeleteMany(p => p.LastRequested < minDate);
         }
 
 
@@ -83,13 +71,8 @@ namespace StardewModdingAPI.Web.Framework.Caching.Mods
         /// <param name="mod">The mod data.</param>
         public CachedMod SaveMod(CachedMod mod)
         {
-            string id = this.NormalizeId(mod.ID);
-
-            this.Mods.ReplaceOne(
-                entry => entry.ID == id && entry.Site == mod.Site,
-                mod,
-                new UpdateOptions { IsUpsert = true }
-            );
+            string cacheKey = this.GetCacheKey(mod.Site, mod.ID);
+            this.Cache.Set(cacheKey, mod, this.MaxCacheTime);
 
             return mod;
         }
@@ -99,6 +82,14 @@ namespace StardewModdingAPI.Web.Framework.Caching.Mods
         public string NormalizeId(string id)
         {
             return id.Trim().ToLower();
+        }
+
+        /// <summary>Get the cache key for a mod entry.</summary>
+        /// <param name="site">The mod site on which the mod is found.</param>
+        /// <param name="id">The mod's unique ID within the <paramref name="site"/>.</param>
+        public string GetCacheKey(ModRepositoryKey site, string id)
+        {
+            return $"mods.{site}.{this.NormalizeId(id)}";
         }
     }
 }

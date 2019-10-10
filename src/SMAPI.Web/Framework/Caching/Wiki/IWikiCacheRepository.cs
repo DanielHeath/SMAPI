@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Linq.Expressions;
 using StardewModdingAPI.Toolkit.Framework.Clients.Wiki;
 
 namespace StardewModdingAPI.Web.Framework.Caching.Wiki
@@ -16,8 +14,7 @@ namespace StardewModdingAPI.Web.Framework.Caching.Wiki
         bool TryGetWikiMetadata(out CachedWikiMetadata metadata);
 
         /// <summary>Get the cached wiki mods.</summary>
-        /// <param name="filter">A filter to apply, if any.</param>
-        IEnumerable<CachedWikiMod> GetWikiMods(Expression<Func<CachedWikiMod, bool>> filter = null);
+        IEnumerable<CachedWikiMod> GetWikiMods();
 
         /// <summary>Save data fetched from the wiki compatibility list.</summary>
         /// <param name="stableVersion">The current stable Stardew Valley version.</param>
